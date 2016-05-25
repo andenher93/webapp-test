@@ -57,22 +57,22 @@ gulp.task('lint:test', () => {
     .pipe(gulp.dest('test/spec/**/*.js'));
 });
 
-gulp.task('jade', () => {
-  return gulp.src(['app/jade/**/*.jade', '!app/jade/templates/**/*.jade'])
-      .pipe($.jade({
-        pretty: true
-      }))
-      .pipe(gulp.dest('./app')); // tell gulp our output folder
+gulp.task('views', () => {
+  return gulp.src('app/*.jade')
+    .pipe($.plumber())
+    .pipe($.jade({pretty: true}))
+    .pipe(gulp.dest('.tmp'))
+    .pipe(reload({stream: true}));
 });
 
-gulp.task('html', ['styles', 'scripts'], () => {
-  return gulp.src('app/**/*.html')
+gulp.task('html', ['views', 'styles', 'scripts'], () => {
+  return gulp.src(['app/*.html', '.tmp/*.html'])
     .pipe($.useref({searchPath: ['.tmp', 'app', '.']}))
     .pipe($.if('*.js', $.uglify()))
     .pipe($.if('*.css', $.cssnano({safe: true, autoprefixer: false})))
     .pipe($.if('*.html', $.htmlmin({
-      collapseBooleanAttributes: true,
       collapseWhitespace: true,
+      collapseBooleanAttributes: true,
       decodeEntities: true,
       minifyCSS: true,
       minifyJS: true,
@@ -113,7 +113,8 @@ gulp.task('fonts', () => {
 gulp.task('extras', () => {
   return gulp.src([
     'app/*.*',
-    '!app/**/*.html'
+    '!app/*.html',
+    '!app/*.jade'
   ], {
     dot: true
   }).pipe(gulp.dest('dist'));
@@ -121,7 +122,7 @@ gulp.task('extras', () => {
 
 gulp.task('clean', del.bind(null, ['.tmp', 'dist', 'app/**/*.html']));
 
-gulp.task('serve', ['jade', 'styles', 'scripts', 'fonts'], () => {
+gulp.task('serve', ['views', 'styles', 'scripts', 'fonts'], () => {
   browserSync({
     notify: false,
     port: 9000,
@@ -134,13 +135,13 @@ gulp.task('serve', ['jade', 'styles', 'scripts', 'fonts'], () => {
   });
 
   gulp.watch([
-    'app/**/*.html',
+    'app/*.html',
     'app/images/**/*',
     '.tmp/fonts/**/*'
   ]).on('change', reload);
 
   gulp.watch('app/styles/**/*.scss', ['styles']);
-  gulp.watch('app/jade/**/*.jade', ['jade']);
+  gulp.watch('app/jade/**/*.jade', ['views']);
   gulp.watch('app/scripts/**/*.js', ['scripts']);
   gulp.watch('app/fonts/**/*', ['fonts']);
   gulp.watch('bower.json', ['wiredep', 'fonts']);
@@ -177,20 +178,20 @@ gulp.task('serve:test', ['scripts'], () => {
 
 // inject bower components
 gulp.task('wiredep', () => {
-  gulp.src('app/styles/*.scss')
+  gulp.src('app/styles/**/*.scss')
     .pipe(wiredep({
       ignorePath: /^(\.\.\/)+/
     }))
     .pipe(gulp.dest('app/styles'));
 
-  gulp.src('app/*.html')
+  gulp.src('app/layouts/*.jade')
     .pipe(wiredep({
       ignorePath: /^(\.\.\/)*\.\./
     }))
-    .pipe(gulp.dest('app'));
+    .pipe(gulp.dest('app/layouts'));
 });
 
-gulp.task('build', ['lint', 'jade', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['lint', 'html', 'images', 'fonts', 'extras'], () => {
   return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
